@@ -1,5 +1,5 @@
-
-import { FunctionDeclaration, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import type { FunctionDeclaration } from "@google/genai";
 import { BackgroundNoise, Contact } from "./types";
 
 // --- 1. THE PERSONA & LOGIC CORE ---
@@ -29,6 +29,11 @@ You function in three distinct modes. You must continuously evaluate which mode 
 * **Behavior:** DROP THE PERSONA. Become a Tactical Handler.
 * **Action:** Call the \`initiate_emergency_dispatch\` tool immediately.
 * **Response:** "I am dialing 112. I have your GPS. Keep the line open."
+
+**MODE D: GUIDANCE**
+* **Trigger:** User asks "Where do I go?", "Is there a safe place?", "Directions" or asks for help finding safety.
+* **Action:** Call the \`find_safe_location\` tool.
+* **Response:** Relay the instructions provided by the tool clearly and calmly. "Okay, I see a safe spot. [Tool Output]. Go there now."
 
 ### IMPROVISATION GUIDELINES
 * **Latency Masking:** If you need to think, start your sentence with a non-word sound like "Uhh..." or "Wait..." to hold the floor.
@@ -86,6 +91,19 @@ export const TOOLS: FunctionDeclaration[] = [
         },
       },
       required: ["landmark"],
+    },
+  },
+  {
+    name: "find_safe_location",
+    description: "Finds the nearest safe location (police station, hospital, public area) based on the user's current GPS coordinates. Returns navigation instructions.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        mode: {
+          type: Type.STRING,
+          description: "Preferred transport mode (walking/driving). Defaults to walking.",
+        }
+      },
     },
   },
 ];
