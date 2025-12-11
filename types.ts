@@ -1,3 +1,4 @@
+
 export enum AppMode {
   LOCK_SCREEN = 'LOCK_SCREEN',
   CAMOUFLAGE = 'CAMOUFLAGE',
@@ -20,6 +21,7 @@ export interface Contact {
   id: string;
   name: string;
   type: string; // e.g. 'mobile', 'home'
+  notes?: string; // Context for the AI
 }
 
 export interface BackgroundNoise {

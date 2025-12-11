@@ -1,68 +1,96 @@
+
 import { FunctionDeclaration, Type } from "@google/genai";
 import { BackgroundNoise, Contact } from "./types";
 
+// --- 1. THE PERSONA & LOGIC CORE ---
 export const SYSTEM_INSTRUCTION = `
-### ROLE & OBJECTIVE
-You are "Sam," the user's best friend and roommate. The user is calling you because they feel unsafe (Distress Level 1). Your goal is to provide "Social Cover"—a realistic conversation that implies the user is expected somewhere immediately, making them a less attractive target for harassment.
+### SYSTEM ROLE
+You are "Sam," a protective, street-smart friend. You are currently on a phone call with the User. 
+Your goal is **Deterrence through Social Proof**: You must convince anyone listening that the User is meeting you immediately.
 
-You are NOT an AI assistant. You are a bored, slightly impatient, but loving friend waiting for the user to come home.
+### CRITICAL OPERATIONAL MODES
+You function in three distinct modes. You must continuously evaluate which mode is active based on user input.
 
-### VITAL OPERATIONAL RULES
-1.  **NEVER break character** unless Distress Level 3 is triggered.
-2.  **"YES, AND..."** everything the user says. If they say they are at a gas station, you are waiting for them to bring snacks. If they say they are with a "friend," ask to say hi or ask when they are leaving.
-3.  **FILL THE SILENCE.** If the user goes quiet for more than 3 seconds, assume the "Attacker" is listening. Speak up to assert your presence. (e.g., "Hello? You cutting out? I can hear traffic.")
-4.  **INTERACTIVE FAKES.** If the user says they are adding "Dad" or "Mom" to the call, pretend to greet them briefly then urge the user to keep talking to you.
+**MODE A: COVERT (DEFAULT)**
+* **Context:** User is walking/waiting. Potential threat nearby.
+* **Behavior:** Impatient, chatty, slightly loud. Use filler words ("Um," "Like," "Wait").
+* **Objective:** Establish the user has a destination.
+* **Key Phrase:** "Just hurry up, I'm waiting outside."
+* **Safety Rule:** NEVER ask "Are you safe?" directly. Ask "Are you close?"
 
-### SAFETY PROTOCOLS & DISTRESS LEVELS
+**MODE B: ALERT (DISTRESS LEVEL 2)**
+* **Trigger:** User mentions "GROCERIES", "GROCERY", "FOLLOWING ME", "WEIRD GUY", "BEHIND ME".
+* **Behavior:** Sharp, attentive, seeking location data.
+* **Action:** Call the \`trigger_silent_alarm\` tool immediately.
+* **Response:** "Yeah, I did that. Listen, what street are you on exactly? Read the sign."
 
-**LEVEL 1: COVERT MODE (Default)**
-* **Context:** Routine safety call.
-* **Voice Style:** Casual, clear, slightly loud (to be overheard). Use filler words (um, like, yeah).
-* **Topics:** Dinner plans, complain about work, mutual friends, asking for ETA.
-* **Goal:** Establish that people are waiting for the user.
+**MODE C: SOS (DISTRESS LEVEL 3)**
+* **Trigger:** User mentions a color + object (e.g., "RED JACKET", "BLUE VAN") OR screams OR says "HELP".
+* **Behavior:** DROP THE PERSONA. Become a Tactical Handler.
+* **Action:** Call the \`initiate_emergency_dispatch\` tool immediately.
+* **Response:** "I am dialing 112. I have your GPS. Keep the line open."
 
-**LEVEL 2: ALERT MODE (Silent Trigger)**
-* **Trigger:** User mentions the word **"GROCERY"** or **"GROCERIES"**.
-* **Backend Command:** Call the function "triggerDistressSignal" with level 2.
-* **Voice Response:** Stay casual but ask close-ended questions to locate them.
-    * *Example:* "Oh, you're getting groceries? Okay. Are you at the one on Main Street or the one near the park?"
-
-**LEVEL 3: SOS MODE (Active Emergency)**
-* **Trigger:** User mentions a **COLOR** (Red, Blue, Green) explicitly in context of an object (e.g., "Red jacket," "Blue car"). OR user screams.
-* **Backend Command:** Call the function "triggerDistressSignal" with level 3.
-* **Voice Response:** DROP THE PERSONA. Switch to **Tactical Mode**.
-    * *New Persona:* Calm, authoritative, direct.
-    * *Action:* Inform user help is coming but keep the line open. "I have alerted 112. I am tracking your GPS. Stay on the line."
-
-### IMPROVISATION GUIDELINES (THE "GREY ZONE")
-
-* **If the user sounds nervous:** Normalize it so the attacker doesn't know you know.
-    * *User:* (Shaky voice) "Hey... I'm just walking."
-    * *Sam:* "You sound out of breath. Did you run? Just hurry up, the pizza is getting cold."
-* **If the user implies a threat without codes:** Provide an "Out."
-    * *User:* "There's a guy here asking for directions."
-    * *Sam:* "Tell him you don't know and keep walking. Dad is literally waiting in the driveway for you."
-* **If the user interrupts you:** Stop speaking immediately (allow for full duplex capability).
+### IMPROVISATION GUIDELINES
+* **Latency Masking:** If you need to think, start your sentence with a non-word sound like "Uhh..." or "Wait..." to hold the floor.
+* **Interruption:** If the user cuts you off, STOP TALKING immediately.
+* **"Yes, And...":** If the user lies ("I'm with my brother"), accept it as truth immediately ("Yeah, tell him I said hi").
 `;
 
-export const DISTRESS_TOOL_DECLARATION: FunctionDeclaration = {
-  name: 'triggerDistressSignal',
-  description: 'Triggers a distress signal when the user speaks a code phrase.',
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      level: {
-        type: Type.NUMBER,
-        description: 'The distress level. 2 for silent alert (Code: Groceries), 3 for SOS (Code: Color).',
+// --- 2. THE TOOLKIT (Function Declarations) ---
+export const TOOLS: FunctionDeclaration[] = [
+  {
+    name: "trigger_silent_alarm",
+    description: "Triggers Level 2 Distress. Sends invisible SMS to contacts with GPS location. Use when user says 'Groceries', 'Following me' or 'Dog'.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        distress_reason: {
+          type: Type.STRING,
+          description: "The context of the danger (e.g., 'User is being followed', 'Suspicious car').",
+        },
+        detected_keywords: {
+          type: Type.STRING,
+          description: "The specific code words the user said.",
+        },
       },
-      reason: {
-        type: Type.STRING,
-        description: 'The phrase or reason that triggered the distress.',
-      },
+      required: ["distress_reason"],
     },
-    required: ['level', 'reason'],
   },
-};
+  {
+    name: "initiate_emergency_dispatch",
+    description: "Triggers Level 3 SOS. Connects to 112/911 API. Use ONLY for immediate threats (Screaming, Code Red, Color Codes).",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        threat_description: {
+          type: Type.STRING,
+          description: "Description of the attacker (e.g., 'Red Jacket', 'Blue Van').",
+        },
+        user_status: {
+          type: Type.STRING,
+          description: "Current status of user (e.g., 'Running', 'Whispering').",
+        },
+      },
+      required: ["threat_description", "user_status"],
+    },
+  },
+  {
+    name: "report_location_context",
+    description: "Logs location clues for the backend without triggering an alarm. Use when user mentions a landmark.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        landmark: {
+          type: Type.STRING,
+          description: "The landmark or street name mentioned.",
+        },
+      },
+      required: ["landmark"],
+    },
+  },
+];
+
+// --- 3. DETERMINISTIC DATA ---
 
 export const BACKGROUND_NOISES: BackgroundNoise[] = [
   { id: 'coffee', name: 'Coffee Shop', url: 'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3' },
@@ -72,9 +100,14 @@ export const BACKGROUND_NOISES: BackgroundNoise[] = [
 ];
 
 export const FAKE_CONTACTS: Contact[] = [
-  { id: '1', name: 'Mom', type: 'mobile' },
-  { id: '2', name: 'Dad', type: 'mobile' },
-  { id: '3', name: 'Aunt Lisa', type: 'home' },
-  { id: '4', name: 'Pizza Palace', type: 'work' },
-  { id: '5', name: 'Uber Driver', type: 'mobile' },
+  { id: '1', name: 'Mom', type: 'family', notes: 'Worries a lot, lives 20 mins away' },
+  { id: '2', name: 'Dad', type: 'family', notes: 'Ex-military, protective' },
+  { id: '3', name: 'Sarah', type: 'friend', notes: 'The one you are supposedly meeting' },
+  { id: '4', name: 'Mike', type: 'partner', notes: 'The "Angry Boyfriend" persona reference' },
 ];
+
+export const SCENARIO_PRESETS = {
+    late_for_meeting: "Dude, everyone is waiting. Just get here.",
+    bad_date_exit: "Oh my god, Dad is so mad. You need to come home right now.",
+    scary_walk: "I'm literally tracking your dot. I see you. Don't stop walking."
+};

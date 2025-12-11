@@ -93,7 +93,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({
       <div className="px-8 mb-4 relative z-0">
         <div className="flex justify-between items-end">
           <div>
-            <h2 className="text-2xl font-bold mb-1">Safety Net</h2>
+            <h2 className="text-2xl font-bold mb-1">Everybody is Dancing</h2>
             <p className="text-neutral-400">The Alias Project</p>
           </div>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" viewBox="0 0 20 20" fill="currentColor">

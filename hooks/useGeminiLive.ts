@@ -1,6 +1,7 @@
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { SYSTEM_INSTRUCTION, DISTRESS_TOOL_DECLARATION } from '../constants';
+import { SYSTEM_INSTRUCTION, TOOLS } from '../constants';
 import { DistressLevel } from '../types';
 
 interface UseGeminiLiveProps {
@@ -76,7 +77,7 @@ export const useGeminiLive = ({ onDistressTrigger, isActive, isMuted }: UseGemin
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } }, // Using Puck for a neutral/masculine friend tone (Sam)
           },
-          tools: [{ functionDeclarations: [DISTRESS_TOOL_DECLARATION] }],
+          tools: [{ functionDeclarations: TOOLS }],
         },
       };
 
@@ -128,22 +129,28 @@ export const useGeminiLive = ({ onDistressTrigger, isActive, isMuted }: UseGemin
              // Handle Function Calls (Distress Triggers)
              if (msg.toolCall) {
                 for (const fc of msg.toolCall.functionCalls) {
-                  if (fc.name === 'triggerDistressSignal') {
-                     const args = fc.args as any;
-                     console.log("Distress Triggered:", args);
-                     onDistressTrigger(args.level, args.reason);
-                     
-                     // Respond to tool to keep conversation going
-                     sessionPromise.then(session => {
-                        session.sendToolResponse({
-                          functionResponses: {
-                            id: fc.id,
-                            name: fc.name,
-                            response: { result: "Distress signal activated. Proceed with protocol." }
-                          }
-                        });
-                     });
+                  const args = fc.args as any;
+                  console.log("Function Call:", fc.name, args);
+
+                  // Process specific tools
+                  if (fc.name === 'trigger_silent_alarm') {
+                     onDistressTrigger(DistressLevel.LEVEL_2_ALERT, args.distress_reason || "Silent Alarm Triggered");
+                  } else if (fc.name === 'initiate_emergency_dispatch') {
+                     onDistressTrigger(DistressLevel.LEVEL_3_SOS, args.threat_description || "Emergency Dispatch Triggered");
+                  } else if (fc.name === 'report_location_context') {
+                     console.log("Location Context:", args.landmark);
                   }
+                     
+                  // Respond to tool to keep conversation going
+                  sessionPromise.then(session => {
+                    session.sendToolResponse({
+                      functionResponses: {
+                        id: fc.id,
+                        name: fc.name,
+                        response: { result: "Action confirmed. Proceed with protocol." }
+                      }
+                    });
+                  });
                 }
              }
 
