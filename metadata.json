@@ -1,0 +1,9 @@
+{
+  "name": "ALIAS",
+  "description": "A covert personal safety application disguised as a music player. Provides an AI safety companion triggered by a fake call interface.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera",
+    "geolocation"
+  ]
+}
