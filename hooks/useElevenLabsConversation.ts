@@ -31,6 +31,47 @@ export const useElevenLabsConversation = ({
                 onDistressTrigger(params.level as DistressLevel, params.reason);
                 return 'Distress signal activated. Proceed with protocol.';
             },
+
+            findNearbySafePlace: async () => {
+                log("Finding nearby safe place...");
+
+                try {
+                    // Get user's current location
+                    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 5000,
+                            maximumAge: 0
+                        });
+                    });
+
+                    const { latitude, longitude } = position.coords;
+                    log("Got location", { latitude, longitude });
+
+                    // Call n8n webhook - hardcoded for reliability, can be overridden via env
+                    const webhookUrl = 'https://n8n-8gcyh-u31496.vm.elestio.app/webhook/safe-location';
+
+                    const response = await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lat: latitude, lng: longitude })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Safety service unavailable');
+                    }
+
+                    const data = await response.json();
+                    log("Safety places found", data);
+
+                    // Return the voice response for the AI to speak
+                    return data.voice_response || "Head toward the nearest busy public place like a store or restaurant.";
+
+                } catch (err) {
+                    log("Error finding safe place", err);
+                    return "I couldn't get your exact location. Head toward any busy, well-lit public area - a store, restaurant, or police station.";
+                }
+            },
         },
         onConnect: () => {
             log("Connected!");
