@@ -82,9 +82,9 @@ export const useElevenLabsConversation = ({
             setIsConnected(false);
             sessionStartedRef.current = false;
         },
-        onError: (err) => {
+        onError: (err: Error | string) => {
             log("Error", err);
-            setError(err.message || "Connection error");
+            setError(typeof err === 'string' ? err : err.message || "Connection error");
         },
     });
 
@@ -93,7 +93,7 @@ export const useElevenLabsConversation = ({
         if (!isActive) return;
         if (sessionStartedRef.current) return;
 
-        const agentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
+        const agentId = (import.meta as any).env?.VITE_ELEVENLABS_AGENT_ID as string | undefined;
         if (!agentId) {
             setError("VITE_ELEVENLABS_AGENT_ID not found in environment");
             return;
@@ -107,7 +107,7 @@ export const useElevenLabsConversation = ({
             sessionStartedRef.current = true;
 
             try {
-                await conversation.startSession({ agentId });
+                await conversation.startSession({ agentId } as any);
             } catch (e: any) {
                 log("startSession error", e);
                 setError(e.message);
